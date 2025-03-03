@@ -96,8 +96,8 @@
                     let newVal = parseFloat($("#valueNb").val());
                     if (newVal < 0)
                         newVal = 0;
-                    if (newVal > 9)
-                        newVal = 9;
+                    if (newVal > 10)
+                        newVal = 10;
                     hardChangeValue(newVal);
                 }
             })
@@ -163,6 +163,7 @@
         }
         function hardChangeValue(value){
             cursor.css('transform', 'translate(' + value*max/10  + 'px,' + 0 + 'px)');
+            $("#valueNb").val(value);
         }
     </script>
 </body>
