@@ -1,0 +1,17 @@
+#smallTicks{
+    stroke:darkslategray;
+    stroke-width:2
+}
+#bigTicks{
+    stroke:black;
+    stroke-width:2
+}
+#value{
+    justify-self: center;
+}
+#valueNb{
+    background-color: transparent;
+    border-style: none;
+    width: 100px;
+    font-size:40px;
+}

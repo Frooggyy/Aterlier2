@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Document</title>
+</head>
+
+<body style="background-color:lightslategray;">
+
+    <svg id="trackbar" viewBox="0 0 1562 500">
+        <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:rgb(0, 0, 0);stop-opacity:1" />
+                <stop offset="100%" style="stop-color:rgb(255,0,0);stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <path id="bar" fill="url(#grad1)"
+            d="M42.486,104.96C19.021,104.96,0,85.939,0,62.474C0,39.01,19.021,19.988,42.486,19.988h1477.6 c23.465,0,42.486,19.022,42.486,42.486c0,23.465-19.021,42.486-42.486,42.486H42.486z" />
+        <g id="smallTicks">
+        </g>
+        <g id="bigTicks">
+        </g>
+        <g class="cursors">
+            <polygon fill="black" points="104,129 104,0 36,0 36,129 70,163 104,129 " />
+            <polygon fill="red" points="95,129 95,10 45,10 45,125 70,150 95,129 " />
+        </g>
+        
+        <g id="units">
+            <text transform="matrix(1 0 0 1 62.7285 230)" font-family="'ArialNarrow'">0</text>
+            <text transform="matrix(1 0 0 1 205.4609 230)" font-family="'ArialNarrow'">1</text>
+            <text transform="matrix(1 0 0 1 347.1929 230)" font-family="'ArialNarrow'">2</text>
+            <text transform="matrix(1 0 0 1 488.9253 230)" font-family="'ArialNarrow'">3</text>
+            <text transform="matrix(1 0 0 1 630.6577 230)" font-family="'ArialNarrow'">4</text>
+            <text transform="matrix(1 0 0 1 772.3901 230)" font-family="'ArialNarrow'">5</text>
+            <text transform="matrix(1 0 0 1 914.1221 230)" font-family="'ArialNarrow'">6</text>
+            <text transform="matrix(1 0 0 1 1055.8545 230)" font-family="'ArialNarrow'">7</text>
+            <text transform="matrix(1 0 0 1 1197.5869 230)" font-family="'ArialNarrow'">8</text>
+            <text transform="matrix(1 0 0 1 1339.3193 230)" font-family="'ArialNarrow'">9</text>
+            <text transform="matrix(1 0 0 1 1470.0513 230)" font-family="'ArialNarrow'">10</text>
+        </g>
+        <g>
+            <
+        </g>
+    </svg>
+            <h1 id="value">
+                Value
+                <input type="text" id="valueNb" value="0.0" />
+            </h1>
+            
+    <script src="jquery/jquery-3.4.1.min.js"></script>
+    <script>
+        $(document).ready(init_UI)
+        const svgns = "http://www.w3.org/2000/svg";
+        let mouseDown = false;
+        let mousePos = { x: 0, y: 0 };
+        let lastMousePos = { x: 0, y: 0 };
+        let currentTransform = null;
+        let currentTarget = null;
+        let currentOffset = null;
+        let screenToPoint = 1;
+        let min = 0;
+        let max  = 1418;
+        let ticksOffset = 70;
+        let actualBarLength = 1562;
+        let tickSpace;
+        let posOnDown;
+        let cursor = null;
+
+        function extractTranslateValues(translateProp) { //translate( Xpx, ypx) --> {x: X, y: Y}
+            let cleaned = translateProp.replace("translate(", "").replace(")", "").replaceAll("px", "").replaceAll(" ", "").split(",");
+            return { x: parseInt(cleaned[0]), y: parseInt(cleaned[1]) };
+        }
+        function extractViewBoxWidth(svg){
+            return parseInt(svg.getAttribute("viewBox").split(" ")[2]);
+        }
+        function init_UI() {
+            cursor = $(".cursors")
+            $(".cursors").mousedown((e) => {
+                currentTarget = e.target.closest('.cursors');
+                currentOffset = { x: 0, y: 0 };    
+                if (currentTarget.style.transform !== "" )
+                    currentOffset =  extractTranslateValues(currentTarget.style.transform);
+                let parentTarget = currentTarget.parentNode;
+                let parentViewBoxWidth = extractViewBoxWidth(parentTarget);
+                screenToPoint = parentTarget.getBoundingClientRect().width / parentViewBoxWidth /* viewBox width*/ ; 
+                lastMousePos.x = e.clientX / screenToPoint;
+                lastMousePos.y = e.clientY / screenToPoint;
+                posOnDown = lastMousePos.x;
+            });
+
+            $("#valueNb").change((e)=> {
+                if (!mouseDown){
+                    let newVal = parseFloat($("#valueNb").val());
+                    if (newVal < 0)
+                        newVal = 0;
+                    if (newVal > 9)
+                        newVal = 9;
+                    hardChangeValue(newVal);
+                }
+            })
+            generateTicks();
+            $("body").mousemove((e) => {
+                if (currentTarget) {
+                    let delta;
+                    mousePos.x = e.clientX / screenToPoint  + currentOffset.x ;
+                    if(mousePos.x - lastMousePos.x <min){
+                        delta = { x: min, y:0 }
+                    }else if(mousePos.x - lastMousePos.x >max){
+                        delta = {x:max, y:0 }
+                    }else{
+                        delta = {x:mousePos.x - lastMousePos.x, y:0 }
+                    }
+                    if(posOnDown - mousePos.x >tickSpace ||posOnDown - mousePos.x  <-tickSpace){
+                        posOnDown = mousePos.x;
+                        $(currentTarget).css('transform', 'translate(' + delta.x  + 'px,' + delta.y + 'px)');
+                        changeValueDrag(delta.x)
+                    }
+                }
+            });
+
+            $("body").mouseup((e) => {
+                currentTarget = null;
+            });
+            
+        }
+        function generateTicks(){
+            let smallTicksBody = $("#smallTicks");
+            let bigTicksBody = $("#bigTicks");
+            let ticksBarLength = actualBarLength - ticksOffset *2;
+
+            let counter = 0;
+            let bigTickSpace = ticksBarLength /10;
+            let smallticksSpace = bigTickSpace/5;
+            tickSpace = smallticksSpace;
+
+            for(let i=0; i<ticksBarLength+bigTickSpace;i+=bigTickSpace){
+                bigTicksBody.append(line(ticksOffset + i,194.204, ticksOffset + i,164.204, "black", 2, "tick" ))
+
+                if(i + bigTickSpace <= ticksBarLength+bigTickSpace){
+                    for(let j=smallticksSpace; j <= bigTickSpace-smallticksSpace; j+=smallticksSpace){
+                    smallTicksBody.append(line((ticksOffset + j) +(bigTickSpace*counter),174.204,(ticksOffset + j) +(bigTickSpace*counter),164.204, "darkslategrey", 2 , "tick"))
+                }
+                }
+                
+                counter++;
+            }
+
+        }
+        function line(x1, y1, x2, y2, stroke = "black", strokeWidth = 1, className) {
+            let line = document.createElementNS(svgns, "line");
+            line.setAttribute("x1", x1); line.setAttribute("y1", y1);
+            line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+            line.setAttribute("stroke", stroke);
+            line.setAttribute("stroke-width", strokeWidth);
+            line.setAttribute("class", className);
+            return line;
+        }
+        function changeValueDrag(value){
+           $("#valueNb").val(((value*100/max)/10).toFixed(2));
+        }
+        function hardChangeValue(value){
+            cursor.css('transform', 'translate(' + value*max/10  + 'px,' + 0 + 'px)');
+        }
+    </script>
+</body>
+
+</html>
